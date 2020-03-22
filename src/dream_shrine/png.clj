@@ -101,8 +101,8 @@
                         palette]
                  :or {width 128
                       palette 0xe4}}]
-  (let [bytes-per-tile-row 2                      ;; 8 pixels at 2 bits per pixel
-        bytes-per-tile     bytes-per-tile-row * 8 ;; 8 rows per tile
+  (let [bytes-per-tile-row 2                         ;; 8 pixels at 2 bits per pixel
+        bytes-per-tile     (* bytes-per-tile-row  8) ;; 8 rows per tile
 
         filename "test.png"
         ;; image-output-path (io/file output-dir image-output-dir filename)
