@@ -111,7 +111,7 @@
 
         ;; TODO: handle a subset of the ROM. for now we're just gonna
         ;; imagine that the whole ROM is graphics data.
-        data rom 
+        data rom
 
         num-tiles (/ (count data) bytes-per-tile)
         tiles-per-row (/ width 8)
