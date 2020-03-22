@@ -1,7 +1,8 @@
 (ns dream-shrine.png
   "For extracting image data from the ROM."
   (:require [clojure.java.io :as io])
-  (:import [java.awt.image BufferedImage DataBufferBytes IndexColorModel Raster]
+  (:import [java.awt Point]
+           [java.awt.image BufferedImage DataBufferByte IndexColorModel Raster]
            [javax.imageio ImageIO]))
 
 ;; try to port this code to clj.
@@ -129,9 +130,9 @@
 
         bi (BufferedImage. width height BufferedImage/TYPE_INT_RGB icm)
         raster (Raster/createRaster (-> bi .getSampleModel)
-                                    (DataBufferBytes. (byte-array pixel-data)
-                                                      (count pixel-data))
+                                    (DataBufferByte. (byte-array pixel-data)
+                                                     (count pixel-data))
                                     (Point.))
         _ (-> bi (.setData raster))]
-    (with-open [file (File. image-output-path)]
+    (with-open [file (io/file image-output-path)]
       (ImageIO/write bi "png" file))))
