@@ -75,6 +75,33 @@
                                                    1))]))]
         color))))
 
+(defn transpose [m]
+  (apply mapv vector m))
+
+(defn convert-palette-to-rgb
+  "ported from mgbdis"
+  [palette]
+  (let [col0 (- 255
+                (bit-shift-left (bit-and palette 0x03)
+                                6))
+        col1 (- 255
+                (bit-shift-left (bit-shift-right (bit-and palette 0x0C)
+                                                 2)
+                                6))
+        col2 (- 255
+                (bit-shift-left (bit-shift-right (bit-and palette 0x30)
+                                                 4)
+                                6))
+        col3 (- 255
+                (bit-shift-left (bit-shift-right (bit-and palette 0xC0)
+                                                 6)
+                                6))]
+    ;; r    g    b    ?
+    [[col0 col0 col0]
+     [col1 col1 col1]
+     [col2 col2 col2]
+     [col3 col3 col3]]))
+
 (defn write-image
   "ported from mgbdis"
   [rom basename {:keys [width
