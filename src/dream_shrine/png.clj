@@ -128,12 +128,16 @@
                 transpose
                 rgb->icm)
 
-
         bi (BufferedImage. width height BufferedImage/TYPE_BYTE_INDEXED icm)
         raster (Raster/createRaster (-> bi .getSampleModel)
-                                    (DataBufferByte. (byte-array pixel-data)
+                                    (DataBufferByte. (->> pixel-data
+                                                          flatten
+                                                          byte-array)
                                                      (count pixel-data))
+                                    ;; (DataBufferByte. (into-array (mapv byte-array pixel-data))
+                                    ;;                  (count pixel-data))
                                     (Point.))
-        _ (-> bi (.setData raster))]
-    (with-open [file (io/file image-output-path)]
-      (ImageIO/write bi "png" file))))
+        _ (-> bi (.setData raster))
+
+        file (io/file image-output-path)]
+    (ImageIO/write bi "png" file)))
