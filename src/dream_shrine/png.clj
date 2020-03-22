@@ -104,7 +104,7 @@
   (let [bytes-per-tile-row 2                         ;; 8 pixels at 2 bits per pixel
         bytes-per-tile     (* bytes-per-tile-row  8) ;; 8 rows per tile
 
-        filename "test.png"
+        filename (str basename ".png")
         ;; image-output-path (io/file output-dir image-output-dir filename)
         image-output-path (join-path output-dir image-output-dir filename)
         _ (io/make-parents image-output-path)
