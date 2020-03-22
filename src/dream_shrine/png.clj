@@ -42,18 +42,22 @@
 (defn join-path [p & ps]
   (str (.normalize (java.nio.file.Paths/get p (into-array String ps)))))
 
-(defn coordinate-to-tile-offset [x y width]
-  (let [bytes-per-tile-row 2 ;; 8 pixels at 2 bits per pixel
-        bytes-per-tile bytes-per-tile-row * 8 ;; 8 rows per tile
+(defn coordinate-to-tile-offset
+  "ported from mgbdis"
+  [x y width]
+  (let [bytes-per-tile-row 2                        ;; 8 pixels at 2 bits per pixel
+        bytes-per-tile     (* bytes-per-tile-row 8) ;; 8 rows per tile
         tiles-per-row (/ width 8)
-        tile-y (/ y 8)
-        tile-x  (/ x 8)
-        row-of-tile (bit-and y 7)]
+        tile-y        (/ y 8)
+        tile-x        (/ x 8)
+        row-of-tile   (bit-and y 7)]
     (+ (* tile-y tiles-per-row bytes-per-tile)
        (* tile-x bytes-per-tile)
        (* row-of-tile bytes-per-tile-row))))
 
-(defn convert-to-pixel-data [data width height]
+(defn convert-to-pixel-data
+  "ported from mgbdis"
+  [data width height]  
   (for [y (range height)]
     (for [x (range width)]
       (let [offset (coordinate-to-tile-offset x y width)
@@ -71,33 +75,50 @@
                                                    1))]))]
         color))))
 
-;; (defn write-image [rom basename {:keys [width
-;;                                         palette]
-;;                                  :or {width 128
-;;                                       palette 0xe4}}]
-;;   ;; to start, we're gonna try treat the whole ROM as one big block of
-;;   ;; image data. then we'll whittle it down.
-;;   (let [bytes-per-tile-row 2 ;; 8 pixels at 2 bits per pixel
-;;         bytes-per-tile     bytes-per-tile-row * 8 ;; 8 rows per tile
+(defn write-image
+  "ported from mgbdis"
+  [rom basename {:keys [width
+                        palette]
+                 :or {width 128
+                      palette 0xe4}}]
+  ;; to start, we're gonna try treat the whole ROM as one big block of
+  ;; image data. then we'll whittle it down.
+  (let [bytes-per-tile-row 2 ;; 8 pixels at 2 bits per pixel
+        bytes-per-tile     bytes-per-tile-row * 8 ;; 8 rows per tile
 
-;;         filename "test.png"
-;;         ;; image-output-path (io/file output-dir image-output-dir filename)
-;;         image-output-path (join-path output-dir image-output-dir filename)
-;;         _ (io/make-parents image-output-path)
+        filename "test.png"
+        ;; image-output-path (io/file output-dir image-output-dir filename)
+        image-output-path (join-path output-dir image-output-dir filename)
+        _ (io/make-parents image-output-path)
 
-;;         data rom ;; TODO: handle a subset of the ROM
+        data rom ;; TODO: handle a subset of the ROM. for now we're
+        ;; just gonna imagine that the whole ROM is graphics
+        ;; data.
 
-;;         num-tiles (/ (count data) bytes-per-tile)
-;;         tiles-per-row (/ width 8)
+        num-tiles (/ (count data) bytes-per-tile)
+        tiles-per-row (/ width 8)
 
-;;         tile-rows (/ num-tiles tiles-per-row)
+        tile-rows (/ num-tiles tiles-per-row)
 
-;;         height (* tile-rows 8)
+        height (* tile-rows 8)
 
-;;         pixel-data (convert-to-pixel-data data width height)
+        pixel-data (convert-to-pixel-data data width height)
 
-;;         rgb-palette (convert-palette-to-rgb palette)]
-;;     ;; now to write a PNG somehow
-;;     ;; https://stackoverflow.com/questions/6973290/generate-and-save-a-png-image-in-clojure
-;;     (with-open [w (io/writer image-output-path)]
-;;       (.write w))))
+        [[palette-r palette-g palette-b]] (-> palette
+                                              convert-palette-to-rgb
+                                              transpose)
+
+        ;; TODO: have convert-palette-to-rgb return IndexColorModel?
+        bpp 2
+        palette-size (bit-shift-left bpp 1)
+        icm (IndexColorModel. bpp
+                              palette-size
+                              (byte-array palette-r)
+                              (byte-array palette-g)
+                              (byte-array palette-b))
+        bi (BufferedImage. width height BufferedImage.TYPE_INT_ARGB icm)];
+    
+    ;; now to write a PNG somehow
+    ;; https://stackoverflow.com/questions/6973290/generate-and-save-a-png-image-in-clojure
+    (with-open [w (io/writer image-output-path)]
+      (.write w))))
