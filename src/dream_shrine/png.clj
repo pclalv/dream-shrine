@@ -102,6 +102,15 @@
      [col2 col2 col2]
      [col3 col3 col3]]))
 
+(defn rgb->icm [[palette-r palette-g palette-b]]
+  (let [bpp 2
+        palette-size (bit-shift-left bpp 1)]
+    (IndexColorModel. bpp
+                      palette-size
+                      (byte-array palette-r)
+                      (byte-array palette-g)
+                      (byte-array palette-b))))
+
 (defn write-image
   "ported from mgbdis"
   [rom basename {:keys [width
@@ -131,18 +140,11 @@
 
         pixel-data (convert-to-pixel-data data width height)
 
-        [[palette-r palette-g palette-b]] (-> palette
-                                              convert-palette-to-rgb
-                                              transpose)
+        icm (-> palette
+                convert-palette-to-rgb
+                transpose
+                rgb->icm)
 
-        ;; TODO: have convert-palette-to-rgb return IndexColorModel?
-        bpp 2
-        palette-size (bit-shift-left bpp 1)
-        icm (IndexColorModel. bpp
-                              palette-size
-                              (byte-array palette-r)
-                              (byte-array palette-g)
-                              (byte-array palette-b))
         bi (BufferedImage. width height BufferedImage.TYPE_INT_ARGB icm)];
     
     ;; now to write a PNG somehow
