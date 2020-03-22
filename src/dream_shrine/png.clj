@@ -56,7 +56,8 @@
                                    (bit-shift-left (bit-shift-right (bit-and (nth data (inc offset))
                                                                              mask)
                                                                     shift)
-                                                   1))]))]
+                                                   1))]
+                      color))]
         color))))
 
 (defn transpose [m]
