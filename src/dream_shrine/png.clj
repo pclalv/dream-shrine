@@ -1,28 +1,11 @@
 (ns dream-shrine.png
   "For extracting image data from the ROM."
-  (:require [clojure.java.io :as io]))
+  (:require [clojure.java.io :as io])
+  (:import [java.awt.image BufferedImage DataBufferBytes IndexColorModel Raster]
+           [javax.imageio ImageIO]))
 
 ;; try to port this code to clj.
 ;; https://github.com/mattcurrie/mgbdis/blob/master/mgbdis.py#L687
-
-;; def process_image_in_range(self, rom, start_address, end_address, arguments = None):
-;;     if not self.first_pass and debug:
-;;         print('Outputting image in range: {} - {}'.format(hex_word(start_address), hex_word(end_address)))
-
-;;     if self.first_pass:
-;;         return
-
-;;     mem_address = rom_address_to_mem_address(start_address)
-;;     labels = self.get_labels_for_non_code_address(mem_address)
-;;     if len(labels):
-;;         self.append_labels_to_output(labels)
-;;         basename = labels[0].rstrip(':')
-;;     else:
-;;         basename = self.format_image_label(mem_address)
-
-;;     full_filename = rom.write_image(basename, arguments, '2bpp', rom.data[start_address:end_address])
-;;     self.append_output(self.format_instruction('INCBIN', ['\"' + full_filename + '\"'])))
-
 
 (defn slurp-bytes
   "Slurp the bytes from a slurpable thing"
@@ -117,8 +100,6 @@
                         palette]
                  :or {width 128
                       palette 0xe4}}]
-  ;; to start, we're gonna try treat the whole ROM as one big block of
-  ;; image data. then we'll whittle it down.
   (let [bytes-per-tile-row 2                      ;; 8 pixels at 2 bits per pixel
         bytes-per-tile     bytes-per-tile-row * 8 ;; 8 rows per tile
 
@@ -145,9 +126,12 @@
                 transpose
                 rgb->icm)
 
-        bi (BufferedImage. width height BufferedImage.TYPE_INT_ARGB icm)];
-    
-    ;; now to write a PNG somehow
-    ;; https://stackoverflow.com/questions/6973290/generate-and-save-a-png-image-in-clojure
-    (with-open [w (io/writer image-output-path)]
-      (.write w))))
+
+        bi (BufferedImage. width height BufferedImage/TYPE_INT_RGB icm)
+        raster (Raster/createRaster (-> bi .getSampleModel)
+                                    (DataBufferBytes. (byte-array pixel-data)
+                                                      (count pixel-data))
+                                    (Point.))
+        _ (-> bi (.setData raster))]
+    (with-open [file (File. image-output-path)]
+      (ImageIO/write bi "png" file))))
