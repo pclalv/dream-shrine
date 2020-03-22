@@ -119,7 +119,7 @@
                       palette 0xe4}}]
   ;; to start, we're gonna try treat the whole ROM as one big block of
   ;; image data. then we'll whittle it down.
-  (let [bytes-per-tile-row 2 ;; 8 pixels at 2 bits per pixel
+  (let [bytes-per-tile-row 2                      ;; 8 pixels at 2 bits per pixel
         bytes-per-tile     bytes-per-tile-row * 8 ;; 8 rows per tile
 
         filename "test.png"
@@ -127,9 +127,9 @@
         image-output-path (join-path output-dir image-output-dir filename)
         _ (io/make-parents image-output-path)
 
-        data rom ;; TODO: handle a subset of the ROM. for now we're
-        ;; just gonna imagine that the whole ROM is graphics
-        ;; data.
+        ;; TODO: handle a subset of the ROM. for now we're just gonna
+        ;; imagine that the whole ROM is graphics data.
+        data rom 
 
         num-tiles (/ (count data) bytes-per-tile)
         tiles-per-row (/ width 8)
