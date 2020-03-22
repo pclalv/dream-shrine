@@ -128,7 +128,7 @@
                 rgb->icm)
 
 
-        bi (BufferedImage. width height BufferedImage/TYPE_INT_RGB icm)
+        bi (BufferedImage. width height BufferedImage/TYPE_BYTE_INDEXED icm)
         raster (Raster/createRaster (-> bi .getSampleModel)
                                     (DataBufferByte. (byte-array pixel-data)
                                                      (count pixel-data))
