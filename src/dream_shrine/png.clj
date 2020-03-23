@@ -96,6 +96,12 @@
                       (byte-array palette-g)
                       (byte-array palette-b))))
 
+;; seems like we can effectively decode bytes as
+;; PNGs... unfortunately, i have no idea where in the ROM any of the
+;; text is. i think that the next thing to do will be to do some cljfx
+;; learning, so that i can display the PNG that i'm generating and
+;; play with it interactively. for example, can we play with any of
+;; these parameters in order to generate a more coherent image?
 (defn write-image
   "ported from mgbdis"
   [rom basename {:keys [width
