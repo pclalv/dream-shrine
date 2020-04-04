@@ -1,6 +1,8 @@
 (ns dream-shrine.core
   (:gen-class)
-  (:require [cljfx.api :as fx]))
+  (:require [cljfx.api :as fx]
+            [dream-shrine.maps]
+            [dream-shrine.png]))
 
 (def *state
   (atom {:title "App title"}))
@@ -16,8 +18,11 @@
            :root {:fx/type :scroll-pane
                   :content {:fx/type :group
                             :children [{:fx/type :image-view
-                                        :image {:url (str "file:"
-                                                          "/Users/paulalvarez/code/dream-shrine/images/test.png")}}]}}
+                                        :image {:is (-> (dream-shrine.png/generate-image dream-shrine.png/rom
+                                                                                         {:offset dream-shrine.maps/minimap-overworld-tiles-offset
+                                                                                          :size dream-shrine.maps/minimap-overworld-tiles-size}
+                                                                                         {})
+                                                        dream-shrine.png/buffered-image->input-stream)}}]}}
            :on-zoom (fn [zoom-event]
                       (let [zoom-factor (.getZoomFactor zoom-event)]
                         (cond (< 1 zoom-factor)

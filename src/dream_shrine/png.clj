@@ -3,6 +3,7 @@
   (:require [clojure.java.io :as io])
   (:import [java.awt Point]
            [java.awt.image BufferedImage DataBufferByte IndexColorModel Raster]
+           [java.io ByteArrayInputStream ByteArrayOutputStream]
            [javax.imageio ImageIO]))
 
 ;; try to port this code to clj.
@@ -144,6 +145,13 @@
                                     (Point.))
         _ (-> bi (.setData raster))]
     bi))
+
+(defn buffered-image->input-stream
+  "lifted from https://stackoverflow.com/questions/4251383/how-to-convert-bufferedimage-to-inputstream/21569243#21569243"
+  [bi]
+  (with-open [os (new ByteArrayOutputStream)]
+    (ImageIO/write bi "png" os)
+    (ByteArrayInputStream. (.toByteArray os))))
 
 (defn write-image [bi basename]
   (let [filename (str basename ".png")
