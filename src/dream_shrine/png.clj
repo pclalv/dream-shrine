@@ -102,23 +102,24 @@
 ;; learning, so that i can display the PNG that i'm generating and
 ;; play with it interactively. for example, can we play with any of
 ;; these parameters in order to generate a more coherent image?
-(defn write-image
+(defn generate-image
   "ported from mgbdis"
-  [rom basename {:keys [width
-                        palette]
-                 :or {width 128
-                      palette 0xe4}}]
+  [rom {:keys [offset size]} {:keys [width palette]
+                              :or {width 128
+                                   palette 0xe4}}]
   (let [bytes-per-tile-row 2                         ;; 8 pixels at 2 bits per pixel
         bytes-per-tile     (* bytes-per-tile-row  8) ;; 8 rows per tile
 
-        filename (str basename ".png")
-        ;; image-output-path (io/file output-dir image-output-dir filename)
-        image-output-path (join-path output-dir image-output-dir filename)
-        _ (io/make-parents image-output-path)
+        data (cond (and offset size)
+                   #_=> (->> rom
+                             (drop offset)
+                             (take size))
+                   (or (and (not offset) size)
+                       (and offset (not size)))
+                   #_=> (throw (Exception. "You must provide both offset and size"))
 
-        ;; TODO: handle a subset of the ROM. for now we're just gonna
-        ;; imagine that the whole ROM is graphics data.
-        data rom
+                   :else
+                   #_=> rom)
 
         num-tiles (/ (count data) bytes-per-tile)
         tiles-per-row (/ width 8)
@@ -140,10 +141,15 @@
                                                           flatten
                                                           byte-array)
                                                      (count pixel-data))
-                                    ;; (DataBufferByte. (into-array (mapv byte-array pixel-data))
-                                    ;;                  (count pixel-data))
                                     (Point.))
-        _ (-> bi (.setData raster))
+        _ (-> bi (.setData raster))]
+    bi))
+
+(defn write-image [bi basename]
+  (let [filename (str basename ".png")
+        image-output-path (join-path output-dir image-output-dir filename)
+
+        _ (io/make-parents image-output-path)
 
         file (io/file image-output-path)]
     (ImageIO/write bi "png" file)))
