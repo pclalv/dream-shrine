@@ -7,19 +7,41 @@
            [javafx.scene Node]))
 
 (def *state
-  (atom {:title "App title"
-         :min-x 0
-         :min-y 0
-         :width 0
-         :height 0
-         :image (-> (dream-shrine.png/generate-image dream-shrine.png/rom
-                                                     {:offset dream-shrine.maps/minimap-overworld-tiles-offset
-                                                      :size dream-shrine.maps/minimap-overworld-tiles-size}
-                                                     {})
-                    dream-shrine.png/buffered-image->input-stream)}))
+  (let [image (dream-shrine.png/generate-image dream-shrine.png/rom
+                                               {:offset dream-shrine.maps/minimap-overworld-tiles-offset
+                                                :size dream-shrine.maps/minimap-overworld-tiles-size}
+                                               {:width 128})]
+    (atom {:title "App title"
+           :image {:min-x 0
+                   :min-y 0
+                   :width (.getWidth image)
+                   :height (.getHeight image)
+                   :viewport-width (.getWidth image)
+                   :viewport-height (.getHeight image)
+                   :src image}})))
 
-(defn root [{:keys [title min-x min-y width height image]}]
-  (println "in root")
+(defn img [{:keys [src
+                   min-x min-y
+                   width height
+                   viewport-width viewport-height]}]
+  {:fx/type :image-view
+   ;; how to control the image's zoom?
+   ;; https://github.com/cljfx/cljfx/blob/master/src/cljfx/fx/image_view.clj
+   :image {;; TODO: apparently you can only read from an input-stream once.
+           ;; how can we re-use the same input stream over and over? rewinding
+           ;; the object is an option but it seems icky.
+           :is (dream-shrine.png/buffered-image->input-stream src)
+           ;; this example indicates that viewport can be used to control zoom.
+           ;; https://gist.github.com/james-d/ce5ec1fd44ce6c64e81a
+
+           ;; or is this example better? https://community.oracle.com/thread/2541811?tstart=0
+           :x min-x
+           :y min-y
+           :viewport {:min-x min-x :min-y min-y
+                      :width viewport-width :height viewport-height}}})
+
+(defn root [{{:keys [title image] :as state} :state}]
+  (prn state)
   {:fx/type :stage
    :showing true
    :title "Cljfx example"
@@ -28,20 +50,12 @@
    :scene {:fx/type :scene
            :root {:fx/type :scroll-pane
                   :content {:fx/type :group
-                            :children (if (nil? image)
-                                        []
-                                        [{:fx/type :image-view
-                                          ;; how to control the image's zoom?
-                                          ;; https://github.com/cljfx/cljfx/blob/master/src/cljfx/fx/image_view.clj
-                                          :image {:is image
-                                                  ;; this example indicates that viewport can be used to control zoom.
-                                                  ;; https://gist.github.com/james-d/ce5ec1fd44ce6c64e81a
-                                                  :viewport {:min-x min-x :min-y min-y
-                                                             :width width :height height}}}])}}
-           ;; don't forget that you can pash additionally kwags in the
-           ;; event/type map which will then be merged into map passed
-           ;; to the event-handler multimethod. could be useful for
-           ;; something.
+                            :children [(img image)]}}
+                                       ;(slider-view {:min 0 :max 128 :value 128})]}}
+           ;; don't forget that you can pass additionally kwargs in
+           ;; the event/type map which will then be merged into map
+           ;; passed to the event-handler multimethod. could be useful
+           ;; for something.
            :on-zoom {:event/type ::zoom}}})
 
 (defn clamp [n min max]
@@ -52,13 +66,12 @@
 (defn image-view-mouse-coords
   "convert mouse coordinates in the image-view to coordinates in the actual image"
   [^ActionEvent event
-   {:keys [min-x min-y viewport-width viewport-height]}]
+   {:keys [min-x min-y image-width viewport-width image-height viewport-height]}]
   (let [;; can i do anything useful with the scene and/or window?
         scene (.getScene ^Node (.getTarget event))
         window (.getWindow scene)
-        {:keys [x y]} event
-        image-width 128 ;; FIXME: this value is fake
-        image-height 128 ;; FIXME: this value is fake
+        x (.getX event)
+        y (.getY event)
         x-proportion (/ x image-width)
         y-proportion (/ y image-width)]
     {:x (+ min-x
@@ -71,7 +84,7 @@
 ;; TODO: follow map events example in order to implement zoom
 ;; https://cljdoc.org/d/cljfx/cljfx/1.6.7/doc/readme#map-events
 (defmethod event-handler ::zoom [{:keys [fx/event]}]
-  (let [{:keys [min-x min-y width height]} *state
+  (let [{:keys [min-x min-y image-width viewport-width image-height viewport-height]} (deref *state)
         ;; if using zoom-factor doesn't feel right, try out the
         ;; exponentiation style in james-d's  gist example
         zoom-factor (.getZoomFactor event)
@@ -79,30 +92,38 @@
                                               ;; this is basically state
                                               {:min-x min-x
                                                :min-y min-y
-                                               :viewport-width width
-                                               :viewport-height height})
+                                               :image-width image-width
+                                               :image-height image-height
+                                               :viewport-width viewport-width
+                                               :viewport-height viewport-height})
 
-        width' (* width zoom-factor)
-        height' (* height zoom-factor)
+        width' (* viewport-width zoom-factor)
+        height' (* viewport-height zoom-factor)
         min-x' (- (mouse-coords :x)
                   (* zoom-factor (- (mouse-coords :x)
                                     min-x)))
         min-y' (- (mouse-coords :y)
                   (* zoom-factor (- (mouse-coords :y)
-                                    min-y)))]
-    (swap! *state merge {:min-x (clamp min-x' 0 (- width width'))
-                         :min-y (clamp min-y' 0 (- height height'))
-                         :width width'
-                         :height height'})))
+                                    min-y)))
+        image-attrs {:min-x (-> min-x' Math/floor int)
+                     :min-y (-> min-y' Math/floor int)
+                     ;; :min-x (clamp min-x' 0 (- width width'))
+                     ;; :min-y (clamp min-y' 0 (- height height'))
+                     :viewport-width (-> width' Math/floor int)
+                     :viewport-height (-> height' Math/floor int)}]
+                     
+    (swap! *state update-in [:image] merge image-attrs)))
 
 (def renderer
   (fx/create-renderer
-   :middleware (fx/wrap-map-desc assoc :fx/type root)))
+   :middleware (fx/wrap-map-desc (fn [state]
+                                   {:fx/type root
+                                    :state state}))
+   :opts {:fx.opt/map-event-handler event-handler}))
+
+(fx/mount-renderer *state
+                   renderer)
 
 (defn -main
   [& args]
-  (fx/mount-renderer
-   *state
-   (fx/create-renderer
-    :middleware (fx/wrap-map-desc assoc :fx/type root)
-    :opts {:fx.opt/map-event-handler event-handler})))
+  nil)
