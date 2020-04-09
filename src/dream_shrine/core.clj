@@ -41,8 +41,6 @@
            ;; icky, and re-generating this everytime seems
            ;; inefficient.
            :is (dream-shrine.png/buffered-image->input-stream src)}
-   ;; this example indicates that viewport can be used to control zoom.
-   ;; https://gist.github.com/james-d/ce5ec1fd44ce6c64e81a
    :viewport {:min-x min-x :min-y min-y
               :width viewport-width :height viewport-height}})
 
@@ -61,10 +59,10 @@
                                         :label "width"
                                         :values [8 16 32 64 128]
                                         :event ::set-width}]}}
-           ;; don't forget that you can pass additionally kwargs in
-           ;; the event/type map which will then be merged into map
-           ;; passed to the event-handler multimethod. could be useful
-           ;; for something.
+           ;; don't forget that you can pass additional kwargs in the
+           ;; event/type map which will then be merged into map passed
+           ;; to the event-handler multimethod. could be useful for
+           ;; something.
            :on-zoom {:event/type ::zoom}}})
 
 (defn clamp [n min max]
@@ -75,17 +73,15 @@
 (defn image-view-mouse-coords
   "convert mouse coordinates in the image-view to coordinates in the actual image"
   [^ActionEvent event
-   {:keys [min-x min-y image-width viewport-width image-height viewport-height] :as whatever}]
-  (println "whatever " whatever)
-  (let [;; can i do anything useful with the scene and/or window?
+   {:keys [min-x min-y width viewport-width height viewport-height]}]
+  (let [;; TODO: can i do anything useful with the scene and/or window?
         scene (.getScene ^Node (.getTarget event))
         window (.getWindow scene)
+
         x (.getX event)
         y (.getY event)
-        _ (prn "x" x)
-        _ (prn "image-width" image-width)
-        x-proportion (/ x image-width)
-        y-proportion (/ y image-width)]
+        x-proportion (/ x width)
+        y-proportion (/ y width)]
     {:x (+ min-x
            (* x-proportion viewport-width))
      :y (+ min-y
@@ -93,24 +89,14 @@
 
 (defmulti event-handler :event/type)
 
-;; TODO: follow map events example in order to implement zoom
-;; https://cljdoc.org/d/cljfx/cljfx/1.6.7/doc/readme#map-events
+;; TODO: make sure this behaves like james-d's:
+;; https://gist.github.com/james-d/ce5ec1fd44ce6c64e81a
 (defmethod event-handler ::zoom [{event :fx/event
                                   event-type :event/type}]
-  (let [_ (prn "(deref *state)" (deref *state))
-        {{:keys [min-x min-y width height viewport-width viewport-height]} :image} (deref *state)
-        ;; if using zoom-factor doesn't feel right, try out the
-        ;; exponentiation style in james-d's  gist example
-        zoom-factor (.getZoomFactor event)
+  (let [{{:keys [min-x min-y viewport-width viewport-height] :as image} :image} (deref *state)
+        zoom-factor (Math/pow 1.01 (.getZoomFactor event))
         mouse-coords (image-view-mouse-coords event
-                                              ;; this is basically state
-                                              {:min-x min-x
-                                               :min-y min-y
-                                               :image-width width
-                                               :image-height height
-                                               :viewport-width viewport-width
-                                               :viewport-height viewport-height})
-
+                                              image)
         width' (-> (* viewport-width zoom-factor)
                    Math/floor
                    int)
