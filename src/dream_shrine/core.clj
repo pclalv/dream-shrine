@@ -10,7 +10,7 @@
   (let [image (dream-shrine.png/generate-image dream-shrine.png/rom
                                                {:offset dream-shrine.maps/minimap-overworld-tiles-offset
                                                 :size dream-shrine.maps/minimap-overworld-tiles-size}
-                                               {:width 128})]
+                                               {:width 64})]
     (atom {:title "App title"
            :image {:min-x 0
                    :min-y 0
