@@ -12,13 +12,15 @@
                                                 :size dream-shrine.maps/minimap-overworld-tiles-size}
                                                {:width 64})]
     (atom {:title "App title"
-           :image {:min-x 0
-                   :min-y 0
+           :image {:src image
                    :width (.getWidth image)
                    :height (.getHeight image)
-                   :viewport-width (.getWidth image)
-                   :viewport-height (.getHeight image)
-                   :src image}})))
+                   :x 0
+                   :y 0
+                   :viewport {:min-x 0
+                              :min-y 0
+                              :width (.getWidth image)
+                              :height (.getHeight image)}}})))
 
 (defn spinner-view [{:keys [label values event]}]
   {:fx/type :h-box
@@ -29,10 +31,7 @@
                                :items values}
                :on-value-changed {:event/type event}}]})
 
-(defn img [{{:keys [src
-                    min-x min-y
-                    width height
-                    viewport-width viewport-height]} :image}]
+(defn img [{{:keys [src width height viewport]} :image}]
   {:fx/type :image-view
    :preserve-ratio true
    :image {;; TODO: apparently you can only read from an input-stream
@@ -41,8 +40,7 @@
            ;; icky, and re-generating this everytime seems
            ;; inefficient.
            :is (dream-shrine.png/buffered-image->input-stream src)}
-   :viewport {:min-x min-x :min-y min-y
-              :width viewport-width :height viewport-height}})
+   :viewport viewport})
 
 (defn root [{{:keys [title image] :as state} :state}]
   {:fx/type :stage
@@ -73,15 +71,17 @@
 (defn image-view-mouse-coords
   "convert mouse coordinates in the image-view to coordinates in the actual image"
   [^ActionEvent event
-   {:keys [min-x min-y width viewport-width height viewport-height]}]
+   {:keys [width height viewport] :as image}]
   (let [;; TODO: can i do anything useful with the scene and/or window?
         scene (.getScene ^Node (.getTarget event))
         window (.getWindow scene)
 
-        x (.getX event)
-        y (.getY event)
-        x-proportion (/ x width)
-        y-proportion (/ y width)]
+        {:keys [min-x min-y]
+         viewport-width :width
+         viewport-height :height} viewport
+
+        x-proportion (/ (.getX event) width)
+        y-proportion (/ (.getY event) width)]
     {:x (+ min-x
            (* x-proportion viewport-width))
      :y (+ min-y
@@ -93,30 +93,30 @@
 ;; https://gist.github.com/james-d/ce5ec1fd44ce6c64e81a
 (defmethod event-handler ::zoom [{event :fx/event
                                   event-type :event/type}]
-  (let [{{:keys [min-x min-y viewport-width viewport-height] :as image} :image} (deref *state)
+  (let [{{:keys [viewport] :as image} :image} (deref *state)
         zoom-factor (Math/pow 1.01 (.getZoomFactor event))
         mouse-coords (image-view-mouse-coords event
                                               image)
-        width' (-> (* viewport-width zoom-factor)
+        width' (-> (* (viewport :width) zoom-factor)
                    Math/floor
                    int)
-        height' (-> (* viewport-height zoom-factor)
+        height' (-> (* (viewport :height) zoom-factor)
                     Math/floor
                     int)
         min-x' (- (mouse-coords :x)
                   (* zoom-factor (- (mouse-coords :x)
-                                    min-x)))
+                                    (viewport :min-x))))
         min-y' (- (mouse-coords :y)
                   (* zoom-factor (- (mouse-coords :y)
-                                    min-y)))
+                                    (viewport :min-y))))
         image-attrs {:min-x (-> min-x' Math/floor int)
                      :min-y (-> min-y' Math/floor int)
                      ;; :min-x (clamp min-x' 0 (- width width'))
                      ;; :min-y (clamp min-y' 0 (- height height'))
-                     :viewport-width width'
-                     :viewport-height height'}]
+                     :width width'
+                     :height height'}]
     
-    (swap! *state update-in [:image] merge image-attrs)))
+    (swap! *state update-in [:image :viewport] merge image-attrs)))
 
 (defmethod event-handler ::set-width [{:keys [fx/event]}]
   (let [width event
