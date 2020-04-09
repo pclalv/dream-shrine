@@ -34,20 +34,17 @@
                     width height
                     viewport-width viewport-height]} :image}]
   {:fx/type :image-view
-   ;; how to control the image's zoom?
-   ;; https://github.com/cljfx/cljfx/blob/master/src/cljfx/fx/image_view.clj
-   :image {;; TODO: apparently you can only read from an input-stream once.
-           ;; how can we re-use the same input stream over and over? rewinding
-           ;; the object is an option but it seems icky.
-           :is (dream-shrine.png/buffered-image->input-stream src)
-           ;; this example indicates that viewport can be used to control zoom.
-           ;; https://gist.github.com/james-d/ce5ec1fd44ce6c64e81a
-
-           ;; or is this example better? https://community.oracle.com/thread/2541811?tstart=0
-           :x min-x
-           :y min-y
-           :viewport {:min-x min-x :min-y min-y
-                      :width viewport-width :height viewport-height}}})
+   :preserve-ratio true
+   :image {;; TODO: apparently you can only read from an input-stream
+           ;; once.  how can we re-use the same input stream over and
+           ;; over? rewinding the object is an option but it seems
+           ;; icky, and re-generating this everytime seems
+           ;; inefficient.
+           :is (dream-shrine.png/buffered-image->input-stream src)}
+   ;; this example indicates that viewport can be used to control zoom.
+   ;; https://gist.github.com/james-d/ce5ec1fd44ce6c64e81a
+   :viewport {:min-x min-x :min-y min-y
+              :width viewport-width :height viewport-height}})
 
 (defn root [{{:keys [title image] :as state} :state}]
   {:fx/type :stage
@@ -78,12 +75,15 @@
 (defn image-view-mouse-coords
   "convert mouse coordinates in the image-view to coordinates in the actual image"
   [^ActionEvent event
-   {:keys [min-x min-y image-width viewport-width image-height viewport-height]}]
+   {:keys [min-x min-y image-width viewport-width image-height viewport-height] :as whatever}]
+  (println "whatever " whatever)
   (let [;; can i do anything useful with the scene and/or window?
         scene (.getScene ^Node (.getTarget event))
         window (.getWindow scene)
         x (.getX event)
         y (.getY event)
+        _ (prn "x" x)
+        _ (prn "image-width" image-width)
         x-proportion (/ x image-width)
         y-proportion (/ y image-width)]
     {:x (+ min-x
@@ -95,8 +95,10 @@
 
 ;; TODO: follow map events example in order to implement zoom
 ;; https://cljdoc.org/d/cljfx/cljfx/1.6.7/doc/readme#map-events
-(defmethod event-handler ::zoom [{:keys [fx/event]}]
-  (let [{:keys [min-x min-y image-width viewport-width image-height viewport-height]} (deref *state)
+(defmethod event-handler ::zoom [{event :fx/event
+                                  event-type :event/type}]
+  (let [_ (prn "(deref *state)" (deref *state))
+        {{:keys [min-x min-y width height viewport-width viewport-height]} :image} (deref *state)
         ;; if using zoom-factor doesn't feel right, try out the
         ;; exponentiation style in james-d's  gist example
         zoom-factor (.getZoomFactor event)
@@ -104,13 +106,17 @@
                                               ;; this is basically state
                                               {:min-x min-x
                                                :min-y min-y
-                                               :image-width image-width
-                                               :image-height image-height
+                                               :image-width width
+                                               :image-height height
                                                :viewport-width viewport-width
                                                :viewport-height viewport-height})
 
-        width' (* viewport-width zoom-factor)
-        height' (* viewport-height zoom-factor)
+        width' (-> (* viewport-width zoom-factor)
+                   Math/floor
+                   int)
+        height' (-> (* viewport-height zoom-factor)
+                    Math/floor
+                    int)
         min-x' (- (mouse-coords :x)
                   (* zoom-factor (- (mouse-coords :x)
                                     min-x)))
@@ -121,8 +127,8 @@
                      :min-y (-> min-y' Math/floor int)
                      ;; :min-x (clamp min-x' 0 (- width width'))
                      ;; :min-y (clamp min-y' 0 (- height height'))
-                     :viewport-width (-> width' Math/floor int)
-                     :viewport-height (-> height' Math/floor int)}]
+                     :viewport-width width'
+                     :viewport-height height'}]
     
     (swap! *state update-in [:image] merge image-attrs)))
 
