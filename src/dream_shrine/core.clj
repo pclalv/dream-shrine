@@ -20,10 +20,21 @@
                    :viewport-height (.getHeight image)
                    :src image}})))
 
-(defn img [{:keys [src
-                   min-x min-y
-                   width height
-                   viewport-width viewport-height]}]
+(defn spinner-view [{:keys [label values event]}]
+  {:fx/type :h-box
+   :children [{:fx/type :label
+               :text label}
+              {:fx/type :spinner
+               :value-factory {:fx/type :list-spinner-value-factory
+                               :items values}
+               ;; cljfx's spinner doesn't define this. i think i'll
+               ;; open a PR to fix that?
+               :on-value-changed {:event/type event}}]})
+
+(defn img [{{:keys [src
+                    min-x min-y
+                    width height
+                    viewport-width viewport-height]} :image}]
   {:fx/type :image-view
    ;; how to control the image's zoom?
    ;; https://github.com/cljfx/cljfx/blob/master/src/cljfx/fx/image_view.clj
@@ -45,13 +56,19 @@
   {:fx/type :stage
    :showing true
    :title "Cljfx example"
-   :width 300
-   :height 100
+   :width 512
+   :height 512
    :scene {:fx/type :scene
            :root {:fx/type :scroll-pane
-                  :content {:fx/type :group
-                            :children [(img image)]}}
-                                       ;(slider-view {:min 0 :max 128 :value 128})]}}
+                  :content {:fx/type :v-box
+                            :children [{:fx/type img
+                                        :image image}
+                                       {:fx/type spinner-view
+                                        :label "width"
+                                        :values [8 16 32 64 128]
+                                        ;; TODO: continue following example
+                                        ;; https://github.com/cljfx/cljfx/blob/master/examples/e12_interactive_development.clj
+                                        :event ::set-width}]}}
            ;; don't forget that you can pass additionally kwargs in
            ;; the event/type map which will then be merged into map
            ;; passed to the event-handler multimethod. could be useful
@@ -113,6 +130,16 @@
                      :viewport-height (-> height' Math/floor int)}]
                      
     (swap! *state update-in [:image] merge image-attrs)))
+
+(defmethod event-handler ::set-width [{:keys [fx/event]}]
+  (let [width event
+        image (dream-shrine.png/generate-image dream-shrine.png/rom
+                                               {:offset dream-shrine.maps/minimap-overworld-tiles-offset
+                                                :size dream-shrine.maps/minimap-overworld-tiles-size}
+                                               {:width width})]
+    (swap! *state update :image merge {:width (.getWidth image)
+                                       :height (.getHeight image)
+                                       :src image})))
 
 (def renderer
   (fx/create-renderer
