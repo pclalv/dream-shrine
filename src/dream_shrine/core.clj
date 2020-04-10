@@ -74,14 +74,27 @@
    {:keys [width height viewport] :as image}]
   (let [;; TODO: can i do anything useful with the scene and/or window?
         scene (.getScene ^Node (.getTarget event))
-        window (.getWindow scene)
+        scroll-pane (.getRoot scene)
+        v-box (-> scroll-pane .getContent)
+        children (-> v-box .getChildren)
+        image-view (->> children
+                        (filter #(instance? javafx.scene.image.ImageView %))
+                        first)
 
         {:keys [min-x min-y]
          viewport-width :width
          viewport-height :height} viewport
+        
 
-        x-proportion (/ (.getX event) width)
-        y-proportion (/ (.getY event) width)]
+        x-proportion (/ (.getX event)
+                        (-> image-view
+                            .getBoundsInLocal
+                            .getWidth))
+        
+        y-proportion (/ (.getY event)
+                        (-> image-view
+                            .getBoundsInLocal
+                            .getHeight))]
     {:x (+ min-x
            (* x-proportion viewport-width))
      :y (+ min-y
