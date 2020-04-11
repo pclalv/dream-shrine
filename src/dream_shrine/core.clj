@@ -6,21 +6,24 @@
   (:import [javafx.event ActionEvent]
            [javafx.scene Node]))
 
+(defn default-image [image]
+  {:src image
+   :width (.getWidth image)
+   :height (.getHeight image)
+   :x 0
+   :y 0
+   :viewport {:min-x 0
+              :min-y 0
+              :width (.getWidth image)
+              :height (.getHeight image)}})
+
 (def *state
   (let [image (dream-shrine.png/generate-image dream-shrine.png/rom
                                                {:offset dream-shrine.maps/minimap-overworld-tiles-offset
                                                 :size dream-shrine.maps/minimap-overworld-tiles-size}
                                                {:width 64})]
     (atom {:title "App title"
-           :image {:src image
-                   :width (.getWidth image)
-                   :height (.getHeight image)
-                   :x 0
-                   :y 0
-                   :viewport {:min-x 0
-                              :min-y 0
-                              :width (.getWidth image)
-                              :height (.getHeight image)}}})))
+           :image (default-image image)})))
 
 (defn spinner-view [{:keys [label values event]}]
   {:fx/type :h-box
@@ -156,9 +159,7 @@
                                                {:offset dream-shrine.maps/minimap-overworld-tiles-offset
                                                 :size dream-shrine.maps/minimap-overworld-tiles-size}
                                                {:width width})]
-    (swap! *state update :image merge {:width (.getWidth image)
-                                       :height (.getHeight image)
-                                       :src image})))
+    (swap! *state update :image merge (default-image image))))
 
 (def renderer
   (fx/create-renderer
