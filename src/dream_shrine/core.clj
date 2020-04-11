@@ -33,6 +33,7 @@
 
 (defn img [{{:keys [src width height viewport]} :image}]
   {:fx/type :image-view
+   ;; :preserve-ration might not matter since width/height are always scaled together
    :preserve-ratio true
    :image {;; TODO: apparently you can only read from an input-stream
            ;; once.  how can we re-use the same input stream over and
@@ -40,6 +41,8 @@
            ;; icky, and re-generating this everytime seems
            ;; inefficient.
            :is (dream-shrine.png/buffered-image->input-stream src)}
+   :fit-width width
+   :fit-height height
    :viewport viewport})
 
 (defn root [{{:keys [title image] :as state} :state}]
@@ -102,34 +105,50 @@
 
 (defmulti event-handler :event/type)
 
-;; TODO: make sure this behaves like james-d's:
-;; https://gist.github.com/james-d/ce5ec1fd44ce6c64e81a
+(def min-pixels 10)
+
+(defn reciporocal [nn]
+  (/ 1 nn))
+
 (defmethod event-handler ::zoom [{event :fx/event
                                   event-type :event/type}]
-  (let [{{:keys [viewport] :as image} :image} (deref *state)
-        zoom-factor (Math/pow 1.01 (.getZoomFactor event))
-        mouse-coords (image-view-mouse-coords event
-                                              image)
-        width' (-> (* (viewport :width) zoom-factor)
-                   Math/floor
-                   int)
-        height' (-> (* (viewport :height) zoom-factor)
-                    Math/floor
-                    int)
+  (let [{{viewport :viewport
+          image-width :width
+          image-height :height
+          :as image} :image} (deref *state)
+        {viewport-width :width
+         viewport-height :height} viewport
+        zoom-factor (-> (.getZoomFactor event)
+                        reciporocal
+                        (clamp
+                         ;; don't scale so we're zoomed in to fewer than MIN_PIXELS in any direction:
+                         (min (/ min-pixels viewport-width)
+                              (/ min-pixels viewport-height))
+                         ;; don't scale so that we're bigger than image dimensions:
+                         (max (/ image-width viewport-width)
+                              (/ image-height viewport-height))))
+        mouse-coords (image-view-mouse-coords event image)
+        viewport-width' (-> (* (viewport :width) zoom-factor))
+                            ;; Math/floor
+                            ;; int
+        viewport-height' (-> (* (viewport :height) zoom-factor))
+                             ;; Math/floor
+                             ;; int
         min-x' (- (mouse-coords :x)
                   (* zoom-factor (- (mouse-coords :x)
                                     (viewport :min-x))))
         min-y' (- (mouse-coords :y)
                   (* zoom-factor (- (mouse-coords :y)
                                     (viewport :min-y))))
-        image-attrs {:min-x (-> min-x' Math/floor int)
-                     :min-y (-> min-y' Math/floor int)
-                     ;; :min-x (clamp min-x' 0 (- width width'))
-                     ;; :min-y (clamp min-y' 0 (- height height'))
-                     :width width'
-                     :height height'}]
+        viewport {:min-x (-> min-x'
+                             (clamp 0 (- image-width viewport-width')))
+                  :min-y (-> min-y'
+                             (clamp 0 (- image-height viewport-height')))
+                  :width viewport-width'
+                  :height viewport-height'}
+        _ (prn "viewport" viewport)]
     
-    (swap! *state update-in [:image :viewport] merge image-attrs)))
+    (swap! *state update-in [:image :viewport] merge viewport)))
 
 (defmethod event-handler ::set-width [{:keys [fx/event]}]
   (let [width event
