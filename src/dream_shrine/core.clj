@@ -6,7 +6,7 @@
   (:import [javafx.event ActionEvent]
            [javafx.scene Node]))
 
-(defn default-image [image]
+(defn default-image-state [image]
   {:src image
    :width (.getWidth image)
    :height (.getHeight image)
@@ -17,13 +17,14 @@
               :width (.getWidth image)
               :height (.getHeight image)}})
 
+(defn image-under-inspection [width]
+  (dream-shrine.png/generate-image dream-shrine.png/rom
+                                   {:offset 0x805aa
+                                    :size dream-shrine.maps/minimap-overworld-tiles-size}
+                                   {:width width}))
 (def *state
-  (let [image (dream-shrine.png/generate-image dream-shrine.png/rom
-                                               {:offset dream-shrine.maps/minimap-overworld-tiles-offset
-                                                :size dream-shrine.maps/minimap-overworld-tiles-size}
-                                               {:width 64})]
-    (atom {:title "App title"
-           :image (default-image image)})))
+  (atom {:title "App title"
+         :image (default-image-state (image-under-inspection 64))}))
 
 (defn spinner-view [{:keys [label values event]}]
   {:fx/type :h-box
@@ -132,11 +133,7 @@
                               (/ image-height viewport-height))))
         mouse-coords (image-view-mouse-coords event image)
         viewport-width' (-> (* (viewport :width) zoom-factor))
-                            ;; Math/floor
-                            ;; int
         viewport-height' (-> (* (viewport :height) zoom-factor))
-                             ;; Math/floor
-                             ;; int
         min-x' (- (mouse-coords :x)
                   (* zoom-factor (- (mouse-coords :x)
                                     (viewport :min-x))))
@@ -154,12 +151,8 @@
     (swap! *state update-in [:image :viewport] merge viewport)))
 
 (defmethod event-handler ::set-width [{:keys [fx/event]}]
-  (let [width event
-        image (dream-shrine.png/generate-image dream-shrine.png/rom
-                                               {:offset dream-shrine.maps/minimap-overworld-tiles-offset
-                                                :size dream-shrine.maps/minimap-overworld-tiles-size}
-                                               {:width width})]
-    (swap! *state update :image merge (default-image image))))
+  (let [width event]
+    (swap! *state update :image merge (default-image-state (image-under-inspection width)))))
 
 (def renderer
   (fx/create-renderer

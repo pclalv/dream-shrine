@@ -12,6 +12,9 @@
 (def minimap-overworld-tiles-offset 0xB3800) ;; TODO: what bank is this? what label/symbol is this?
 (def minimap-overworld-tiles-size 0x800)
 
+(def wall-tile-set-offset 0x805aa)
+
+
 (comment
   (defn draw-minimap-overworld-tiles
     "ported from LALE.MinimapDrawer/drawOverworldTiles which goes
@@ -30,5 +33,3 @@
           minimap-overworld-tiles (read-bytes rom
                                               minimap-overworld-tiles-offset
                                               minimap-overworld-tiles-size)])))
-        
-  
